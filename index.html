@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EV Charge & Cost Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #0f1318;
+    --border: #1e2530;
+    --accent: #00e5ff;
+    --accent2: #7fff6e;
+    --accent3: #ff6b35;
+    --text: #c8d8e8;
+    --muted: #4a5a6a;
+    --glow: 0 0 20px rgba(0,229,255,0.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(0,229,255,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(127,255,110,0.04) 0%, transparent 50%);
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  header {
+    padding: 2.5rem 2rem 1.75rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: 1px;
+    background: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.4rem, 4vw, 2.4rem);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: #fff;
+    text-shadow: 0 0 30px rgba(0,229,255,0.5);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .mode-picker {
+    max-width: 560px;
+    margin: 1.75rem auto 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+    padding: 0 1.25rem;
+  }
+
+  .mode-btn {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 0.5rem 0.75rem;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .mode-btn:hover { transform: translateY(-2px); border-color: rgba(0,229,255,0.35); }
+  .mode-btn.active-ice  { border-color: var(--accent3); background: rgba(255,107,53,0.09); }
+  .mode-btn.active-bev  { border-color: var(--accent);  background: rgba(0,229,255,0.09); }
+  .mode-btn.active-phev { border-color: var(--accent2); background: rgba(127,255,110,0.09); }
+
+  .mode-icon { font-size: 1.7rem; display: block; margin-bottom: 0.3rem; }
+
+  .mode-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text);
+    display: block;
+  }
+
+  .mode-sub {
+    font-size: 0.58rem;
+    color: var(--muted);
+    display: block;
+    margin-top: 0.15rem;
+  }
+
+  .mode-btn.active-ice  .mode-name { color: var(--accent3); }
+  .mode-btn.active-bev  .mode-name { color: var(--accent);  }
+  .mode-btn.active-phev .mode-name { color: var(--accent2); }
+
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 720px) { .main { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: border-color 0.3s;
+  }
+
+  .card:hover { border-color: rgba(0,229,255,0.2); }
+  .card-full { grid-column: 1 / -1; }
+
+  .card-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .card-label::before {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: var(--glow);
+    flex-shrink: 0;
+  }
+
+  .card-label.orange { color: var(--accent3); }
+  .card-label.orange::before { background: var(--accent3); box-shadow: 0 0 12px rgba(255,107,53,0.5); }
+  .card-label.green  { color: var(--accent2); }
+  .card-label.green::before  { background: var(--accent2); box-shadow: 0 0 12px rgba(127,255,110,0.5); }
+
+  .field { margin-bottom: 1rem; }
+  .field:last-child { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  input[type="number"], select {
+    width: 100%;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.65rem 0.9rem;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input[type="number"]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,229,255,0.1);
+  }
+
+  input[type="number"]::placeholder { color: var(--muted); }
+  select option { background: #0f1318; }
+
+  .toggle-group {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+  }
+
+  .toggle-group button {
+    flex: 1;
+    padding: 0.55rem;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .toggle-group button.active {
+    background: rgba(0,229,255,0.12);
+    color: var(--accent);
+  }
+
+  .charge-levels { display: flex; flex-direction: column; gap: 0.9rem; }
+
+  .charge-row {
+    display: grid;
+    grid-template-columns: 105px 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .charge-name { font-size: 0.72rem; letter-spacing: 0.08em; color: var(--text); }
+  .charge-name small { display: block; font-size: 0.6rem; color: var(--muted); margin-top: 1px; }
+
+  .charge-bar-track {
+    height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .charge-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .fill-l1 { background: linear-gradient(90deg, #4a90d9, #00e5ff); }
+  .fill-l2 { background: linear-gradient(90deg, #00e5ff, #7fff6e); }
+  .fill-l3 { background: linear-gradient(90deg, #7fff6e, #ff6b35); }
+
+  .charge-time {
+    font-size: 0.75rem;
+    color: var(--accent);
+    white-space: nowrap;
+    min-width: 70px;
+    text-align: right;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .result-tile {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.1rem 1rem;
+    transition: border-color 0.3s, transform 0.2s;
+  }
+
+  .result-tile:hover { transform: translateY(-2px); }
+  .result-tile.electric { border-color: rgba(0,229,255,0.3); }
+  .result-tile.gas      { border-color: rgba(255,107,53,0.3); }
+  .result-tile.savings  { border-color: rgba(127,255,110,0.3); }
+  .result-tile.ice-stat { border-color: rgba(255,107,53,0.4); background: rgba(255,107,53,0.04); }
+
+  .result-tile-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .result-tile-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .result-tile.electric .result-tile-value { color: var(--accent);  text-shadow: 0 0 15px rgba(0,229,255,0.4); }
+  .result-tile.gas      .result-tile-value { color: var(--accent3); text-shadow: 0 0 15px rgba(255,107,53,0.4); }
+  .result-tile.savings  .result-tile-value { color: var(--accent2); text-shadow: 0 0 15px rgba(127,255,110,0.4); }
+  .result-tile.ice-stat .result-tile-value { color: var(--accent3); text-shadow: 0 0 15px rgba(255,107,53,0.4); }
+
+  .result-tile-sub { font-size: 0.65rem; color: var(--muted); margin-top: 0.3rem; }
+
+  .be-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.1em;
+  }
+
+  .be-track {
+    height: 12px;
+    background: rgba(255,107,53,0.15);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .be-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 6px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    position: relative;
+  }
+
+  .be-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0; width: 2px;
+    background: white;
+    box-shadow: 0 0 6px white;
+  }
+
+  .be-note {
+    margin-top: 0.75rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .be-note strong { color: var(--accent2); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    grid-column: 1 / -1;
+    position: relative;
+  }
+
+  .divider::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    background: var(--bg);
+    padding: 0 0.75rem;
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+  .ice-banner {
+    background: rgba(255,107,53,0.07);
+    border: 1px solid rgba(255,107,53,0.2);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    font-size: 0.7rem;
+    color: #e88060;
+    line-height: 1.6;
+    margin-bottom: 1.1rem;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse-dot 1.8s ease-in-out infinite;
+    display: inline-block;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+  }
+
+  .hidden { display: none !important; }
+
+  /* ── PHEV EV% Slider ── */
+  .slider-wrap { margin-bottom: 1.25rem; }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.6rem;
+  }
+
+  .slider-header label { margin-bottom: 0; font-size: 0.68rem; }
+
+  .slider-badges {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+  }
+
+  .badge-ev  { color: var(--accent);  }
+  .badge-gas { color: var(--accent3); }
+
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(
+      to right,
+      var(--accent) 0%,
+      var(--accent) var(--pct, 70%),
+      var(--accent3) var(--pct, 70%),
+      var(--accent3) 100%
+    );
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+  }
+
+  .slider-sublabels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.58rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+
+  /* ── PHEV charge level cost table ── */
+  .charge-cost-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    margin-top: 0.5rem;
+  }
+
+  .charge-cost-table th {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .charge-cost-table td {
+    padding: 0.55rem 0.6rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text);
+  }
+
+  .charge-cost-table tr:last-child td { border-bottom: none; }
+
+  .charge-cost-table td.val-elec { color: var(--accent);  font-family: 'Orbitron', monospace; font-size: 0.8rem; }
+  .charge-cost-table td.val-time { color: var(--muted); }
+  .charge-cost-table td.val-wall { color: var(--accent3); font-family: 'Orbitron', monospace; font-size: 0.8rem; }
+
+  /* ── ICE offset section ── */
+  .offset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+
+  .offset-tile {
+    background: rgba(255,107,53,0.04);
+    border: 1px solid rgba(255,107,53,0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+
+  .offset-tile:hover { transform: translateY(-2px); }
+  .offset-emoji { font-size: 1.7rem; display: block; margin-bottom: 0.4rem; }
+
+  .offset-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent3);
+    text-shadow: 0 0 12px rgba(255,107,53,0.4);
+    display: block;
+  }
+
+  .offset-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 0.3rem;
+    display: block;
+  }
+
+  .offset-note {
+    font-size: 0.7rem;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-top: 0.5rem;
+  }
+
+  .offset-note strong { color: var(--accent3); }
+  .offset-note .grn  { color: var(--accent2); }
+
+  /* ── CO2 / Green Impact ── */
+  .co2-card { border-color: rgba(127,255,110,0.2) !important; }
+  .co2-card:hover { border-color: rgba(127,255,110,0.45) !important; }
+
+  .co2-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .co2-tile {
+    background: rgba(127,255,110,0.04);
+    border: 1px solid rgba(127,255,110,0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+
+  .co2-tile:hover { transform: translateY(-2px); }
+  .co2-emoji { font-size: 1.8rem; display: block; margin-bottom: 0.4rem; }
+
+  .co2-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent2);
+    text-shadow: 0 0 12px rgba(127,255,110,0.4);
+    display: block;
+  }
+
+  .co2-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 0.3rem;
+    display: block;
+  }
+
+  .grid-select-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .grid-select-row label { white-space: nowrap; margin-bottom: 0; flex-shrink: 0; }
+  .grid-select-row select { flex: 1; min-width: 160px; }
+
+  .co2-bar-wrap { margin-top: 0.25rem; }
+
+  .co2-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .co2-track {
+    height: 10px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .co2-row-track {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .co2-bar-single {
+    height: 10px;
+    border-radius: 5px;
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .co2-bar-gas { background: linear-gradient(90deg, var(--accent3), #ff9060); }
+  .co2-bar-ev  { background: linear-gradient(90deg, var(--accent2), #a0ff90); }
+
+  .co2-note {
+    margin-top: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .co2-note strong { color: var(--accent2); }
+  .co2-note .red   { color: var(--accent3); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FUEL <span>&amp;</span> CHARGE CALC</h1>
+  <p class="subtitle">ICE · BEV · PHEV Cost &amp; Breakeven Analyzer</p>
+
+  <div class="mode-picker">
+    <button class="mode-btn" id="btn-ice" onclick="setMode('ice')">
+      <span class="mode-icon">⛽</span>
+      <span class="mode-name">ICE</span>
+      <span class="mode-sub">Gas / Diesel</span>
+    </button>
+    <button class="mode-btn active-bev" id="btn-bev" onclick="setMode('bev')">
+      <span class="mode-icon">⚡</span>
+      <span class="mode-name">BEV</span>
+      <span class="mode-sub">Full Electric</span>
+    </button>
+    <button class="mode-btn" id="btn-phev" onclick="setMode('phev')">
+      <span class="mode-icon">🔋</span>
+      <span class="mode-name">PHEV</span>
+      <span class="mode-sub">Plug-in Hybrid</span>
+    </button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ═══ ICE VEHICLE INFO ═══ -->
+  <div class="card hidden" id="sec-ice-info">
+    <div class="card-label orange">ICE Vehicle Info</div>
+    <div class="ice-banner">⛽ Gas or diesel only — enter your specs to calculate fuel costs and compare to electrified options.</div>
+    <div class="two-col">
+      <div class="field">
+        <label>Tank Size (gal)</label>
+        <input type="number" id="iceTankGal" value="15" min="1" step="0.5" placeholder="e.g. 15">
+      </div>
+      <div class="field">
+        <label>Fuel Type</label>
+        <select id="iceFuelType" onchange="recalc()">
+          <option value="gas">Gasoline</option>
+          <option value="diesel">Diesel</option>
+          <option value="premium">Premium</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>City MPG</label>
+      <input type="number" id="iceCityMpg" value="24" min="1" step="0.5" placeholder="e.g. 24">
+    </div>
+    <div class="field">
+      <label>Highway MPG</label>
+      <input type="number" id="iceHwyMpg" value="32" min="1" step="0.5" placeholder="e.g. 32">
+    </div>
+  </div>
+
+  <!-- ═══ BEV BATTERY & EFFICIENCY ═══ -->
+  <div class="card" id="sec-bev-info">
+    <div class="card-label">Battery &amp; Efficiency</div>
+    <div class="field">
+      <label>Battery Size (kWh)</label>
+      <input type="number" id="batteryKwh" value="75" min="1" max="200" step="0.1" placeholder="e.g. 75">
+    </div>
+    <div class="field">
+      <label>EV Efficiency Mode</label>
+      <div class="toggle-group">
+        <button id="btn-mi-kwh" class="active" onclick="setEffMode('mi-kwh')">mi / kWh</button>
+        <button id="btn-wh-mi"  onclick="setEffMode('wh-mi')">Wh / mi</button>
+      </div>
+      <input type="number" id="evEfficiency" value="3.5" min="0.1" step="0.1" placeholder="e.g. 3.5">
+      <div style="font-size:0.62rem;color:var(--muted);margin-top:0.35rem;" id="eff-hint">Higher = more efficient</div>
+    </div>
+  </div>
+
+  <!-- ═══ PHEV ELECTRIC SPECS ═══ -->
+  <div class="card hidden" id="sec-phev-info">
+    <div class="card-label green">PHEV Electric Range</div>
+    <div class="field">
+      <label>Electric Battery (kWh)</label>
+      <input type="number" id="phevBatKwh" value="18" min="1" max="100" step="0.1" placeholder="e.g. 18">
+    </div>
+    <div class="field">
+      <label>Electric Efficiency (mi/kWh)</label>
+      <input type="number" id="phevMiKwh" value="3.2" min="0.1" step="0.1" placeholder="e.g. 3.2">
+    </div>
+    <div class="field">
+      <label>Gas MPG (hybrid / gas mode)</label>
+      <input type="number" id="phevHybridMpg" value="42" min="1" step="0.5" placeholder="e.g. 42">
+    </div>
+  </div>
+
+  <!-- ═══ FUEL & ENERGY COSTS ═══ -->
+  <div class="card" id="sec-costs">
+    <div class="card-label">Fuel &amp; Energy Costs</div>
+
+    <!-- Electricity: BEV + PHEV -->
+    <div class="field" id="cost-elec">
+      <label>Electricity Cost ($/kWh)</label>
+      <input type="number" id="electricityCost" value="0.13" min="0" step="0.001" placeholder="e.g. 0.13">
+    </div>
+
+    <!-- Gas price: all modes -->
+    <div class="field">
+      <label id="lbl-gas-price">Gas Price ($/gallon)</label>
+      <input type="number" id="gasPrice" value="3.50" min="0" step="0.01" placeholder="e.g. 3.50">
+    </div>
+
+    <!-- Diesel: ICE only -->
+    <div class="field hidden" id="cost-diesel">
+      <label>Diesel Price ($/gallon)</label>
+      <input type="number" id="dieselPrice" value="3.80" min="0" step="0.01" placeholder="e.g. 3.80">
+    </div>
+
+    <!-- BEV Gas Price Breakeven (replaces comparison MPG for BEV) -->
+    <div class="field hidden" id="cost-compmpg" style="display:none!important;">
+      <label>Comparison Gas Car MPG</label>
+      <input type="number" id="gasMpg" value="30" min="1" step="0.1" placeholder="e.g. 30">
+    </div>
+
+    <div class="hidden" id="cost-bev-breakeven">
+      <div style="font-family:'Orbitron',monospace;font-size:0.62rem;letter-spacing:0.25em;color:var(--accent2);text-transform:uppercase;margin-bottom:0.6rem;">
+        ⚡ vs ⛽ Breakeven Gas Price
+      </div>
+      <div style="background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:0.9rem 1rem;font-size:0.72rem;line-height:1.8;color:var(--text);" id="bev-breakeven-box">
+        Enter EV efficiency and electricity cost above to see the breakeven gas price.
+      </div>
+    </div>
+
+    <!-- PHEV Gas Price Breakeven (replaces MPG comparison for PHEV) -->
+    <div class="hidden" id="cost-phev-breakeven">
+      <div style="font-family:'Orbitron',monospace;font-size:0.62rem;letter-spacing:0.25em;color:var(--accent2);text-transform:uppercase;margin-bottom:0.6rem;">
+        ⚡ vs ⛽ Breakeven Gas Price
+      </div>
+      <div style="background:rgba(127,255,110,0.05);border:1px solid rgba(127,255,110,0.2);border-radius:8px;padding:0.9rem 1rem;font-size:0.72rem;line-height:1.8;color:var(--text);" id="phev-breakeven-box">
+        Enter PHEV specs and electricity cost above to see the breakeven gas price.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CHARGING LEVELS (BEV / PHEV) ═══ -->
+  <div class="card card-full" id="sec-charge-levels">
+    <div class="card-label">Charging Level Efficiency</div>
+    <div class="charge-levels" id="chargeLevels"></div>
+  </div>
+
+  <!-- ═══ ICE: FULL TANK ANALYSIS ═══ -->
+  <div class="card card-full hidden" id="sec-ice-tank">
+    <div class="card-label orange">Full Tank Analysis</div>
+    <div class="results-grid">
+      <div class="result-tile ice-stat">
+        <div class="result-tile-label">Cost to Fill</div>
+        <div class="result-tile-value" id="ice-fill-cost">—</div>
+        <div class="result-tile-sub">full tank</div>
+      </div>
+      <div class="result-tile ice-stat">
+        <div class="result-tile-label">Combined MPG</div>
+        <div class="result-tile-value" id="ice-combined">—</div>
+        <div class="result-tile-sub">EPA 55% hwy / 45% city</div>
+      </div>
+      <div class="result-tile ice-stat">
+        <div class="result-tile-label">City Range</div>
+        <div class="result-tile-value" id="ice-range-city">—</div>
+        <div class="result-tile-sub">miles city driving</div>
+      </div>
+      <div class="result-tile ice-stat">
+        <div class="result-tile-label">Hwy Range</div>
+        <div class="result-tile-value" id="ice-range-hwy">—</div>
+        <div class="result-tile-sub">miles highway</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DIVIDER ═══ -->
+  <div class="divider card-full" data-label="RESULTS"></div>
+
+  <!-- ═══ COST PER MILE ═══ -->
+  <div class="card">
+    <div class="card-label"><span class="live-dot"></span>Cost Per Mile</div>
+    <div class="results-grid">
+      <div class="result-tile electric" id="tile-cpm-elec">
+        <div class="result-tile-label" id="lbl-cpm-elec">Electric</div>
+        <div class="result-tile-value" id="res-cpm-elec">—</div>
+        <div class="result-tile-sub" id="sub-cpm-elec">per mile (EV)</div>
+      </div>
+      <div class="result-tile gas">
+        <div class="result-tile-label" id="lbl-cpm-gas">Gas</div>
+        <div class="result-tile-value" id="res-cpm-gas">—</div>
+        <div class="result-tile-sub" id="sub-cpm-gas">per mile (ICE)</div>
+      </div>
+      <div class="result-tile savings" id="tile-cpm-save">
+        <div class="result-tile-label">You Save</div>
+        <div class="result-tile-value" id="res-cpm-save">—</div>
+        <div class="result-tile-sub">per mile vs gas</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FILL UP / CHARGE COST ═══ -->
+  <div class="card">
+    <div class="card-label"><span class="live-dot"></span><span id="lbl-fillup-title">Full Charge Cost</span></div>
+    <div class="results-grid">
+      <div class="result-tile electric" id="tile-charge-cost">
+        <div class="result-tile-label" id="lbl-charge-cost">Full Charge</div>
+        <div class="result-tile-value" id="res-charge-cost">—</div>
+        <div class="result-tile-sub" id="sub-charge-cost">to fill battery</div>
+      </div>
+      <div class="result-tile gas">
+        <div class="result-tile-label" id="lbl-gas-equiv">Equiv. Gas Fill</div>
+        <div class="result-tile-value" id="res-gas-equiv">—</div>
+        <div class="result-tile-sub" id="sub-gas-equiv">same range, gas car</div>
+      </div>
+      <div class="result-tile savings" id="tile-range">
+        <div class="result-tile-label" id="lbl-range">EV Range</div>
+        <div class="result-tile-value" id="res-range">—</div>
+        <div class="result-tile-sub">miles per charge</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ANNUAL & BREAKEVEN ═══ -->
+  <div class="card card-full">
+    <div class="card-label"><span class="live-dot"></span>Annual Cost &amp; Breakeven</div>
+
+    <div class="two-col" style="margin-bottom:1rem;">
+      <div class="field">
+        <label>Miles Driven Per Year</label>
+        <input type="number" id="milesYear" value="12000" min="1" step="100" placeholder="e.g. 12000">
+      </div>
+      <div class="field" id="field-premium">
+        <label id="lbl-premium">EV Premium Over Gas Car ($)</label>
+        <input type="number" id="evPremium" value="8000" min="0" step="100" placeholder="e.g. 8000">
+      </div>
+    </div>
+
+    <!-- Charging level selector for annual cost — BEV + PHEV only -->
+    <div class="hidden" id="annual-level-selector" style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;">
+        <div style="font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">
+          Annual cost based on charging at:
+        </div>
+        <div class="toggle-group" style="margin:0;width:auto;">
+          <button id="al-btn-l1" onclick="setAnnualLevel('l1')">L1 · 80%</button>
+          <button id="al-btn-l2" class="active" onclick="setAnnualLevel('l2')">L2 · 95%</button>
+          <button id="al-btn-l3" onclick="setAnnualLevel('l3')">L3 · 92%</button>
+        </div>
+      </div>
+      <div style="font-size:0.62rem;color:var(--muted);margin-top:0.4rem;" id="annual-level-note">
+        Level 2 (240V home charger) — 95% wall-to-battery efficiency
+      </div>
+    </div>
+
+    <div class="results-grid" style="margin-bottom:1.25rem;">
+      <div class="result-tile electric" id="tile-annual-elec">
+        <div class="result-tile-label" id="lbl-annual-elec">Annual EV Fuel</div>
+        <div class="result-tile-value" id="res-annual-elec">—</div>
+        <div class="result-tile-sub" id="sub-annual-elec">electricity / yr</div>
+      </div>
+      <div class="result-tile gas">
+        <div class="result-tile-label" id="lbl-annual-gas">Annual Gas Cost</div>
+        <div class="result-tile-value" id="res-annual-gas">—</div>
+        <div class="result-tile-sub" id="sub-annual-gas">gasoline / yr</div>
+      </div>
+      <div class="result-tile savings" id="tile-annual-save">
+        <div class="result-tile-label">Annual Savings</div>
+        <div class="result-tile-value" id="res-annual-save">—</div>
+        <div class="result-tile-sub">vs gas car / yr</div>
+      </div>
+    </div>
+
+    <!-- Breakeven bar (hidden for ICE mode) -->
+    <div id="sec-breakeven">
+      <!-- PHEV: EV% slider -->
+      <div class="slider-wrap hidden" id="phev-slider-wrap">
+        <div class="slider-header">
+          <label>Drive mix: EV vs Gas mode</label>
+          <div class="slider-badges">
+            <span class="badge-ev">⚡ <span id="phev-ev-pct">70</span>% electric</span>
+            <span class="badge-gas">⛽ <span id="phev-gas-pct">30</span>% gas</span>
+          </div>
+        </div>
+        <input type="range" id="phevEvPct" min="0" max="100" value="70" step="1"
+               style="--pct:70%;" oninput="onPhevSlider(this)">
+        <div class="slider-sublabels">
+          <span>0% EV (all gas)</span>
+          <span>50 / 50</span>
+          <span>100% EV (never use gas)</span>
+        </div>
+      </div>
+
+      <!-- BEV + PHEV: per-level charge cost comparison -->
+      <div class="hidden" id="charge-cost-wrap" style="margin-bottom:1.25rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+          <div style="font-family:'Orbitron',monospace;font-size:0.62rem;letter-spacing:0.25em;color:var(--accent2);text-transform:uppercase;">
+            Charge Cost by Level
+          </div>
+          <div class="toggle-group" style="margin:0;width:auto;">
+            <button id="cl-btn-l1" class="active" onclick="setChargeLevel('l1')">L1</button>
+            <button id="cl-btn-l2" onclick="setChargeLevel('l2')">L2</button>
+            <button id="cl-btn-l3" onclick="setChargeLevel('l3')">L3</button>
+          </div>
+        </div>
+
+        <!-- Selected level summary tiles -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:0.85rem;">
+          <div class="result-tile electric" style="text-align:center;padding:0.85rem 0.5rem;">
+            <div class="result-tile-label">Wall kWh</div>
+            <div class="result-tile-value" style="font-size:1.2rem;" id="cl-wall-kwh">—</div>
+            <div class="result-tile-sub">drawn from outlet</div>
+          </div>
+          <div class="result-tile electric" style="text-align:center;padding:0.85rem 0.5rem;">
+            <div class="result-tile-label">Charge Cost</div>
+            <div class="result-tile-value" style="font-size:1.2rem;" id="cl-cost">—</div>
+            <div class="result-tile-sub">full charge</div>
+          </div>
+          <div class="result-tile electric" style="text-align:center;padding:0.85rem 0.5rem;">
+            <div class="result-tile-label">Charge Time</div>
+            <div class="result-tile-value" style="font-size:1.2rem;" id="cl-time">—</div>
+            <div class="result-tile-sub" id="cl-level-name">Level 1 · 80% eff</div>
+          </div>
+        </div>
+
+        <!-- All-levels comparison table -->
+        <table class="charge-cost-table">
+          <thead>
+            <tr>
+              <th>Level</th>
+              <th>Wall kWh</th>
+              <th>Full charge cost</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="charge-rows"></tbody>
+        </table>
+        <div style="font-size:0.62rem;color:var(--muted);margin-top:0.5rem;">
+          Wall kWh = battery ÷ efficiency (L1: 80%, L2: 95%, L3: 92%). Cost = wall kWh × electricity rate.
+        </div>
+      </div>
+
+      <div class="be-label-row">
+        <span>Breakeven progress (vs gas car)</span>
+        <span id="be-years-label">—</span>
+      </div>
+      <div class="be-track">
+        <div class="be-fill" id="be-bar" style="width:0%"></div>
+      </div>
+      <div class="be-note" id="be-note">Enter your values above to see the breakeven analysis.</div>
+    </div>
+
+    <!-- ICE annual note -->
+    <div class="hidden" id="sec-ice-annual">
+      <div class="be-note" id="ice-annual-note" style="color:var(--text);">Enter miles per year to see your annual fuel cost.</div>
+
+      <!-- ICE CO2 offset section -->
+      <div class="hidden" id="ice-offset-section" style="margin-top:1.25rem;">
+        <div style="font-family:'Orbitron',monospace;font-size:0.62rem;letter-spacing:0.25em;color:var(--accent3);text-transform:uppercase;margin-bottom:0.5rem;">
+          🌍 Emissions Offset Required
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.75rem;line-height:1.6;">
+          To fully neutralize this vehicle's annual CO₂ output you would need:
+        </div>
+        <div class="offset-grid">
+          <div class="offset-tile">
+            <span class="offset-emoji">🌲</span>
+            <span class="offset-value" id="ice-offset-trees">—</span>
+            <span class="offset-label">Trees planted</span>
+          </div>
+          <div class="offset-tile">
+            <span class="offset-emoji">🌳</span>
+            <span class="offset-value" id="ice-offset-acres">—</span>
+            <span class="offset-label">Acres of forest</span>
+          </div>
+          <div class="offset-tile">
+            <span class="offset-emoji">☀️</span>
+            <span class="offset-value" id="ice-offset-solar">—</span>
+            <span class="offset-label">Solar panels (400W) / yr<br><span style="font-size:0.55rem;letter-spacing:0.05em;">avg 4 peak sun-hrs/day</span></span>
+          </div>
+          <div class="offset-tile">
+            <span class="offset-emoji">💨</span>
+            <span class="offset-value" id="ice-offset-wind">—</span>
+            <span class="offset-label">Wind turbine-days / yr</span>
+          </div>
+        </div>
+        <div class="offset-note" id="ice-offset-note"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CO2 GREEN IMPACT ═══ -->
+  <div class="card card-full co2-card hidden" id="sec-co2">
+    <div class="card-label green"><span class="live-dot"></span>Environmental Impact</div>
+
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">
+      <div style="flex:1;min-width:180px;">
+        <label for="gridMode" style="margin-bottom:0.4rem;">Grid lookup method</label>
+        <select id="gridMode" onchange="onGridModeChange()">
+          <option value="state">📍 By US State (EPA eGRID 2023)</option>
+          <option value="custom">✏️ Custom (enter g CO₂/kWh)</option>
+        </select>
+      </div>
+      <div style="flex:2;min-width:200px;" id="state-picker-wrap">
+        <label for="stateSelect" style="margin-bottom:0.4rem;">Select your state</label>
+        <select id="stateSelect" onchange="onStateChange()">
+          <option value="">— Choose a state —</option>
+          <optgroup label="🌿 Clean Grid (&lt;400 lbs/MWh)">
+            <option value="VT">Vermont — 6 lbs/MWh (nearly all hydro/nuclear)</option>
+            <option value="WA">Washington — 118 lbs/MWh (hydro-dominant)</option>
+            <option value="OR">Oregon — 244 lbs/MWh (hydro + wind)</option>
+            <option value="ID">Idaho — 185 lbs/MWh (hydro)</option>
+            <option value="ME">Maine — 231 lbs/MWh (wind + hydro)</option>
+            <option value="SD">South Dakota — 180 lbs/MWh (wind + hydro)</option>
+            <option value="ND">North Dakota — 370 lbs/MWh (wind growing)</option>
+            <option value="CA">California — 349 lbs/MWh (solar + gas mix)</option>
+            <option value="NH">New Hampshire — 296 lbs/MWh (nuclear + hydro)</option>
+            <option value="NY">New York — 302 lbs/MWh (nuclear + hydro)</option>
+            <option value="NJ">New Jersey — 310 lbs/MWh (nuclear-heavy)</option>
+            <option value="CT">Connecticut — 318 lbs/MWh (nuclear + gas)</option>
+            <option value="RI">Rhode Island — 356 lbs/MWh (gas + offshore wind)</option>
+            <option value="MA">Massachusetts — 393 lbs/MWh (gas + offshore wind)</option>
+          </optgroup>
+          <optgroup label="🟡 Moderate Grid (400–700 lbs/MWh)">
+            <option value="IL">Illinois — 413 lbs/MWh (nuclear + gas)</option>
+            <option value="SC">South Carolina — 420 lbs/MWh (nuclear)</option>
+            <option value="VA">Virginia — 440 lbs/MWh (nuclear + gas)</option>
+            <option value="MD">Maryland — 445 lbs/MWh (gas + nuclear)</option>
+            <option value="MN">Minnesota — 468 lbs/MWh (wind + gas)</option>
+            <option value="NC">North Carolina — 478 lbs/MWh (nuclear + gas)</option>
+            <option value="PA">Pennsylvania — 490 lbs/MWh (nuclear + gas)</option>
+            <option value="FL">Florida — 510 lbs/MWh (gas-heavy)</option>
+            <option value="DE">Delaware — 515 lbs/MWh (gas)</option>
+            <option value="GA">Georgia — 525 lbs/MWh (nuclear + gas)</option>
+            <option value="TX">Texas — 530 lbs/MWh (gas + wind)</option>
+            <option value="NV">Nevada — 535 lbs/MWh (gas + solar)</option>
+            <option value="AZ">Arizona — 540 lbs/MWh (nuclear + gas)</option>
+            <option value="TN">Tennessee — 545 lbs/MWh (hydro + nuclear)</option>
+            <option value="MI">Michigan — 558 lbs/MWh (gas + nuclear)</option>
+            <option value="OH">Ohio — 565 lbs/MWh (gas + coal)</option>
+            <option value="IA">Iowa — 455 lbs/MWh (wind + gas)</option>
+            <option value="KS">Kansas — 560 lbs/MWh (wind + gas)</option>
+            <option value="NE">Nebraska — 580 lbs/MWh (wind + nuclear)</option>
+            <option value="AL">Alabama — 590 lbs/MWh (gas + nuclear)</option>
+            <option value="AR">Arkansas — 595 lbs/MWh (gas + nuclear)</option>
+            <option value="LA">Louisiana — 600 lbs/MWh (gas-heavy)</option>
+            <option value="MS">Mississippi — 615 lbs/MWh (gas)</option>
+            <option value="OK">Oklahoma — 620 lbs/MWh (gas + wind)</option>
+            <option value="CO">Colorado — 630 lbs/MWh (gas + coal mix)</option>
+            <option value="UT">Utah — 650 lbs/MWh (coal + gas)</option>
+            <option value="IN">Indiana — 660 lbs/MWh (coal + gas)</option>
+            <option value="KY">Kentucky — 680 lbs/MWh (coal-heavy)</option>
+            <option value="NM">New Mexico — 690 lbs/MWh (coal + gas)</option>
+            <option value="MT">Montana — 640 lbs/MWh (coal + hydro)</option>
+            <option value="AK">Alaska — 600 lbs/MWh (gas + oil)</option>
+            <option value="HI">Hawaii — 580 lbs/MWh (oil + solar)</option>
+          </optgroup>
+          <optgroup label="🔴 High-Carbon Grid (&gt;700 lbs/MWh)">
+            <option value="MO">Missouri — 720 lbs/MWh (coal + gas)</option>
+            <option value="WI">Wisconsin — 720 lbs/MWh (coal + gas)</option>
+            <option value="WY">Wyoming — 1,755 lbs/MWh (coal-dominant)</option>
+            <option value="WV">West Virginia — 1,919 lbs/MWh (coal-dominant)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div style="flex:1;min-width:160px;display:none;" id="custom-grid-wrap">
+        <label style="margin-bottom:0.4rem;">g CO₂ / kWh</label>
+        <input type="number" id="customGridG" placeholder="e.g. 345" min="0" max="2000" step="1" value="345">
+      </div>
+    </div>
+
+    <!-- Grid intensity badge -->
+    <div id="grid-badge" style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,0.02);margin-bottom:1.25rem;">
+      <div style="width:14px;height:14px;border-radius:50%;flex-shrink:0;" id="grid-badge-dot"></div>
+      <div style="flex:1;">
+        <div style="font-family:'Orbitron',monospace;font-size:0.75rem;color:var(--text);" id="grid-badge-title">Select a state above</div>
+        <div style="font-size:0.63rem;color:var(--muted);margin-top:0.2rem;" id="grid-badge-sub">EPA eGRID 2023 data · lbs CO₂ per MWh</div>
+      </div>
+      <div style="font-family:'Orbitron',monospace;font-size:1.2rem;font-weight:700;" id="grid-badge-val">—</div>
+      <div style="font-size:0.6rem;color:var(--muted);line-height:1.3;">lbs<br>CO₂/MWh</div>
+    </div>
+
+    <div class="co2-grid">
+      <div class="co2-tile">
+        <span class="co2-emoji">🏭</span>
+        <span class="co2-value" id="co2-gas-annual">—</span>
+        <span class="co2-label">Gas CO₂/yr (lbs)</span>
+      </div>
+      <div class="co2-tile">
+        <span class="co2-emoji">⚡</span>
+        <span class="co2-value" id="co2-ev-annual">—</span>
+        <span class="co2-label">EV CO₂/yr (lbs)</span>
+      </div>
+      <div class="co2-tile">
+        <span class="co2-emoji">🌿</span>
+        <span class="co2-value" id="co2-saved-annual">—</span>
+        <span class="co2-label">CO₂ Saved/yr (lbs)</span>
+      </div>
+      <div class="co2-tile">
+        <span class="co2-emoji">🌲</span>
+        <span class="co2-value" id="co2-trees">—</span>
+        <span class="co2-label">Trees equivalent/yr</span>
+      </div>
+      <div class="co2-tile">
+        <span class="co2-emoji">🚗</span>
+        <span class="co2-value" id="co2-cars-off">—</span>
+        <span class="co2-label">Gas cars removed equiv.</span>
+      </div>
+      <div class="co2-tile">
+        <span class="co2-emoji">📱</span>
+        <span class="co2-value" id="co2-phones">—</span>
+        <span class="co2-label">Phones charged equiv.</span>
+      </div>
+    </div>
+
+    <!-- Side-by-side comparison bars -->
+    <div style="margin-bottom:0.5rem;">
+      <div class="co2-bar-labels">
+        <span id="co2-gas-bar-label">⛽ Gas: — lbs CO₂/mi</span>
+        <span id="co2-ev-bar-label">⚡ EV: — lbs CO₂/mi</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+        <div class="co2-track" style="background:rgba(255,107,53,0.12);">
+          <div class="co2-bar-single co2-bar-gas" id="co2-bar-gas" style="width:100%;height:100%;border-radius:5px;"></div>
+        </div>
+        <div class="co2-track" style="background:rgba(127,255,110,0.08);">
+          <div class="co2-bar-single co2-bar-ev" id="co2-bar-ev" style="width:0%;height:100%;border-radius:5px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="co2-note" id="co2-note">Enter your vehicle data and miles per year above to see your environmental impact.</div>
+
+    <!-- BEV/PHEV offset section: what it takes to offset the EV's remaining grid emissions -->
+    <div class="hidden" id="ev-offset-section" style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border);">
+      <div style="font-family:'Orbitron',monospace;font-size:0.62rem;letter-spacing:0.25em;color:var(--accent2);text-transform:uppercase;margin-bottom:0.4rem;">
+        🌍 To Offset Your EV's Remaining Grid Emissions
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.75rem;line-height:1.6;">
+        EVs still have indirect emissions from grid electricity. Here's what it takes to offset them:
+      </div>
+      <div class="offset-grid">
+        <div class="offset-tile" style="border-color:rgba(127,255,110,0.25);background:rgba(127,255,110,0.04);">
+          <span class="offset-emoji">🌲</span>
+          <span class="offset-value" style="color:var(--accent2);text-shadow:0 0 12px rgba(127,255,110,0.4);" id="ev-offset-trees">—</span>
+          <span class="offset-label">Trees / yr</span>
+        </div>
+        <div class="offset-tile" style="border-color:rgba(127,255,110,0.25);background:rgba(127,255,110,0.04);">
+          <span class="offset-emoji">🌳</span>
+          <span class="offset-value" style="color:var(--accent2);text-shadow:0 0 12px rgba(127,255,110,0.4);" id="ev-offset-acres">—</span>
+          <span class="offset-label">Acres of forest / yr</span>
+        </div>
+        <div class="offset-tile" style="border-color:rgba(127,255,110,0.25);background:rgba(127,255,110,0.04);">
+          <span class="offset-emoji">☀️</span>
+          <span class="offset-value" style="color:var(--accent2);text-shadow:0 0 12px rgba(127,255,110,0.4);" id="ev-offset-solar">—</span>
+          <span class="offset-label">Solar panels (400W) / yr<br><span style="font-size:0.55rem;letter-spacing:0.05em;">avg 4 peak sun-hrs/day</span></span>
+        </div>
+        <div class="offset-tile" style="border-color:rgba(127,255,110,0.25);background:rgba(127,255,110,0.04);">
+          <span class="offset-emoji">💨</span>
+          <span class="offset-value" style="color:var(--accent2);text-shadow:0 0 12px rgba(127,255,110,0.4);" id="ev-offset-wind">—</span>
+          <span class="offset-label">Wind turbine-days / yr</span>
+        </div>
+      </div>
+      <div class="offset-note" id="ev-offset-note" style="color:var(--muted);"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let effMode = 'mi-kwh';
+  let mode = 'bev';
+
+  // eff = wall-to-battery efficiency. L1: 80% (120V EVSE losses), L2: 95% (onboard charger), L3: 92% (DC bypasses onboard charger, but thermal mgmt losses)
+  const levels = [
+    { id:'l1', name:'Level 1', sub:'120V / ~1.4 kW · 80% eff',      kw:1.4,  eff:0.80, color:'fill-l1', maxKw:7.2  },
+    { id:'l2', name:'Level 2', sub:'240V / 3.3–19.2 kW · 95% eff',  kw:7.2,  eff:0.95, color:'fill-l2', maxKw:19.2 },
+    { id:'l3', name:'Level 3', sub:'DC Fast / 50–350 kW · 92% eff', kw:150,  eff:0.92, color:'fill-l3', maxKw:350  },
+  ];
+
+  // ── Mode switching ──────────────────────────────────────────
+  function setMode(m) {
+    mode = m;
+
+    ['ice','bev','phev'].forEach(x => {
+      document.getElementById('btn-'+x).className =
+        'mode-btn' + (x === m ? ' active-'+x : '');
+    });
+
+    const isBEV  = m === 'bev';
+    const isPHEV = m === 'phev';
+    const isICE  = m === 'ice';
+    const hasElec = isBEV || isPHEV;
+
+    show('sec-ice-info',     isICE);
+    show('sec-bev-info',     isBEV);
+    show('sec-phev-info',    isPHEV);
+    show('sec-charge-levels',hasElec);
+    show('sec-ice-tank',     isICE);
+    show('cost-elec',        hasElec);
+    show('cost-diesel',      isICE);
+    show('cost-compmpg',        false);  // hidden for all modes now
+    show('cost-bev-breakeven',  isBEV);
+    show('cost-phev-breakeven', isPHEV);
+
+    show('tile-cpm-elec',    hasElec);
+    show('tile-cpm-save',    hasElec);
+    show('tile-charge-cost', hasElec);
+    show('tile-range',       hasElec);
+    show('tile-annual-elec', hasElec);
+    show('tile-annual-save', hasElec);
+    show('field-premium',    hasElec);
+
+    show('sec-breakeven',    hasElec);
+    show('sec-ice-annual',   isICE);
+    show('sec-co2',          true);
+    show('phev-slider-wrap',      isPHEV);
+    show('charge-cost-wrap',      hasElec);
+    show('annual-level-selector', hasElec);
+
+    document.getElementById('lbl-gas-price').textContent =
+      isICE ? 'Gasoline Price ($/gallon)' : 'Gas Price ($/gallon, for comparison)';
+
+    document.getElementById('lbl-annual-gas').textContent = isICE ? 'Annual Fuel Cost' : 'Annual Gas Cost';
+    document.getElementById('sub-annual-gas').textContent = isICE ? 'gasoline / yr'   : 'gasoline / yr (ICE)';
+
+    recalc();
+  }
+
+  function show(id, visible) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', !visible);
+  }
+
+  // ── Efficiency toggle ───────────────────────────────────────
+  function setEffMode(m) {
+    effMode = m;
+    document.getElementById('btn-mi-kwh').classList.toggle('active', m==='mi-kwh');
+    document.getElementById('btn-wh-mi').classList.toggle('active',  m==='wh-mi');
+    const inp  = document.getElementById('evEfficiency');
+    const hint = document.getElementById('eff-hint');
+    const cur  = parseFloat(inp.value);
+    if (m === 'mi-kwh') {
+      inp.placeholder = 'e.g. 3.5';
+      if (cur) inp.value = +(1000/cur).toFixed(2);
+      hint.textContent = 'Higher = more efficient';
+    } else {
+      inp.placeholder = 'e.g. 280';
+      if (cur) inp.value = +(1000/cur).toFixed(0);
+      hint.textContent = 'Lower = more efficient';
+    }
+    recalc();
+  }
+
+  function getMiPerKwh() {
+    const v = parseFloat(document.getElementById('evEfficiency').value);
+    if (!v || isNaN(v)) return null;
+    return effMode === 'mi-kwh' ? v : 1000 / v;
+  }
+
+  // ── Charging bars ───────────────────────────────────────────
+  function buildChargeLevels() {
+    const c = document.getElementById('chargeLevels');
+    c.innerHTML = '';
+    levels.forEach(l => {
+      const row = document.createElement('div');
+      row.className = 'charge-row';
+      row.innerHTML = `
+        <div class="charge-name">${l.name}<small>${l.sub}</small></div>
+        <div class="charge-bar-track">
+          <div class="charge-bar-fill ${l.color}" id="bar-${l.id}" style="width:0%"></div>
+        </div>
+        <div class="charge-time" id="time-${l.id}">—</div>`;
+      c.appendChild(row);
+    });
+  }
+
+  function updateChargeBars(kwh) {
+    levels.forEach(l => {
+      // kWh drawn from wall = battery_kwh / efficiency; time = wall_kwh / charger_kw
+      const wallKwh = kwh / l.eff;
+      const hrs = wallKwh / l.kw;
+      const pct = Math.min((l.kw / l.maxKw) * 100, 100);
+      document.getElementById('bar-'+l.id).style.width = pct+'%';
+      let t;
+      if (hrs < 1/60) t = '<1 min';
+      else if (hrs < 1) t = Math.round(hrs*60)+' min';
+      else if (hrs >= 24) t = (hrs/24).toFixed(1)+' days';
+      else t = hrs.toFixed(1)+' hrs';
+      document.getElementById('time-'+l.id).textContent = t;
+    });
+  }
+
+  // ── Recalc router ───────────────────────────────────────────
+  function recalc() {
+    const gasPrice  = parseFloat(document.getElementById('gasPrice').value);
+    const milesYear = parseFloat(document.getElementById('milesYear').value);
+
+    if (mode === 'ice')  { recalcICE(gasPrice, milesYear);  return; }
+    if (mode === 'phev') { recalcPHEV(gasPrice, milesYear); return; }
+    recalcBEV(gasPrice, milesYear);
+  }
+
+  // ── ICE ─────────────────────────────────────────────────────
+  function recalcICE(gasPrice, milesYear) {
+    const tankGal  = parseFloat(document.getElementById('iceTankGal').value);
+    const cityMpg  = parseFloat(document.getElementById('iceCityMpg').value);
+    const hwyMpg   = parseFloat(document.getElementById('iceHwyMpg').value);
+    const fuelType = document.getElementById('iceFuelType').value;
+    const price    = fuelType === 'diesel'
+      ? parseFloat(document.getElementById('dieselPrice').value) : gasPrice;
+
+    const combined = (cityMpg && hwyMpg) ? 1/(0.45/cityMpg + 0.55/hwyMpg) : null;
+    const fillCost = (tankGal && price)   ? tankGal * price : null;
+
+    document.getElementById('ice-fill-cost').textContent  = fillCost  ? '$'+fillCost.toFixed(2)      : '—';
+    document.getElementById('ice-combined').textContent   = combined  ? combined.toFixed(1)+' mpg'   : '—';
+    document.getElementById('ice-range-city').textContent = (tankGal && cityMpg) ? Math.round(tankGal*cityMpg)+' mi' : '—';
+    document.getElementById('ice-range-hwy').textContent  = (tankGal && hwyMpg)  ? Math.round(tankGal*hwyMpg)+' mi'  : '—';
+
+    const gasCpm = (combined && price) ? price / combined : null;
+    set('lbl-cpm-gas','Gas (Combined)');
+    set('sub-cpm-gas','per mile');
+    set('res-cpm-gas', gasCpm ? '$'+gasCpm.toFixed(3) : '—');
+    set('res-cpm-elec','—'); set('res-cpm-save','—');
+
+    // Fill/range tiles repurposed for ICE
+    set('lbl-fillup-title','Full Tank Cost');
+    set('lbl-charge-cost','Tank Fill');
+    set('res-charge-cost', fillCost ? '$'+fillCost.toFixed(2) : '—');
+    set('sub-charge-cost','to fill tank');
+    set('lbl-gas-equiv','Combined Range');
+    set('res-gas-equiv', (combined && tankGal) ? Math.round(combined*tankGal)+' mi' : '—');
+    set('sub-gas-equiv','miles on full tank');
+    set('lbl-range','Cost / 100 mi');
+    set('res-range', gasCpm ? '$'+(gasCpm*100).toFixed(2) : '—');
+
+    const annualGas = (gasCpm && milesYear) ? gasCpm * milesYear : null;
+    set('res-annual-gas', annualGas ? '$'+Math.round(annualGas).toLocaleString() : '—');
+    set('res-annual-elec','—'); set('res-annual-save','—');
+
+    if (annualGas) {
+      const elecCost = parseFloat(document.getElementById('electricityCost').value) || 0.13;
+      const evEstimate = milesYear * elecCost / 3.5;
+      document.getElementById('ice-annual-note').innerHTML =
+        `At <strong style="color:var(--accent3)">${Math.round(milesYear).toLocaleString()} mi/yr</strong>, you spend roughly ` +
+        `<strong style="color:var(--accent3)">$${Math.round(annualGas).toLocaleString()}/yr</strong> on fuel ` +
+        `(<strong style="color:var(--accent3)">$${(annualGas/12).toFixed(0)}/mo</strong>). ` +
+        `An equivalent BEV at 3.5 mi/kWh would cost ~<strong style="color:var(--accent2)">$${Math.round(evEstimate).toLocaleString()}/yr</strong> — ` +
+        `saving ~<strong style="color:var(--accent2)">$${Math.round(annualGas-evEstimate).toLocaleString()}/yr</strong>.`;
+
+      // ── ICE CO2 offset ──
+      const annualCO2lbs = combined ? (GAS_LBS_PER_GAL / combined) * milesYear : null;
+      show('ice-offset-section', !!annualCO2lbs);
+      if (annualCO2lbs) {
+        const o = calcOffsetValues(annualCO2lbs);
+        document.getElementById('ice-offset-trees').textContent = o.trees;
+        document.getElementById('ice-offset-acres').textContent = o.acres;
+        document.getElementById('ice-offset-solar').textContent = o.solar;
+        document.getElementById('ice-offset-wind').textContent  = o.wind;
+        document.getElementById('ice-offset-note').innerHTML =
+          `This vehicle emits roughly <strong>${Math.round(annualCO2lbs).toLocaleString()} lbs of CO₂/yr</strong> ` +
+          `(${(annualCO2lbs/2204.6).toFixed(1)} metric tons). To fully offset that you'd need ` +
+          `<strong>${o.trees} trees</strong> growing for a year, ` +
+          `or <strong>${o.solar} solar panels</strong> (400W, ~4 peak sun-hrs/day) generating for a year. ` +
+          `Switching to an EV eliminates tailpipe emissions entirely — ` +
+          `<span class="grn">the cleanest offset is not driving gas at all.</span>`;
+      }
+    } else {
+      set('ice-annual-note','Enter miles per year to see your annual fuel cost.');
+      show('ice-offset-section', false);
+    }
+    calcCO2({ evCpm: null, gasCpm, milesYear, miPerKwh: null, gasMpg: combined });
+  }
+
+  // ── BEV ─────────────────────────────────────────────────────
+  function recalcBEV(gasPrice, milesYear) {
+    const battery   = parseFloat(document.getElementById('batteryKwh').value);
+    const elecCost  = parseFloat(document.getElementById('electricityCost').value);
+    const evPremium = parseFloat(document.getElementById('evPremium').value);
+    const miPerKwh  = getMiPerKwh();
+    const annualEff = getAnnualLevelEff(); // efficiency of selected annual charging level
+    const annualLvl = levels.find(l => l.id === selectedAnnualLevel);
+
+    if (battery) updateChargeBars(battery);
+    buildChargeCostTable(battery, elecCost);
+
+    // Effective electricity cost per kWh delivered to battery (accounting for wall losses)
+    const effectiveElecCost = elecCost ? elecCost / annualEff : null;
+
+    set('lbl-fillup-title', 'Full Charge Cost');
+    set('lbl-cpm-elec','Electric'); set('sub-cpm-elec','per mile (BEV)');
+    set('lbl-cpm-gas', 'Gas Breakeven'); set('sub-cpm-gas', 'price gas must reach');
+    set('lbl-charge-cost', annualLvl.name + ' Full Charge'); set('sub-charge-cost', Math.round(annualEff*100)+'% eff · wall cost');
+    set('lbl-gas-equiv','EV Range'); set('sub-gas-equiv','miles per charge');
+    set('lbl-range','Cost / 100 mi');
+    set('lbl-annual-elec','Annual Elec.'); set('sub-annual-elec', annualLvl.name + ' · ' + Math.round(annualEff*100)+'% eff');
+
+    // Cost per mile using wall-adjusted electricity cost
+    const evCpm = (miPerKwh && effectiveElecCost) ? effectiveElecCost / miPerKwh : null;
+
+    // BEV breakeven gas price: what MPG-equivalent gas car would cost the same per mile
+    // We don't need a comparison MPG — instead show the breakeven gas price at various MPGs
+    // Core formula: beGasPrice = evCpm * compMpg — but we show a universal statement
+    // breakeven gas price per gallon such that gas CPM = evCpm: gasPrice = evCpm * MPG
+    // We'll compute for a few reference MPGs and show the most relevant one
+    const bevBeBox = document.getElementById('bev-breakeven-box');
+    if (evCpm !== null && elecCost && miPerKwh) {
+      const beAt25 = evCpm * 25;
+      const beAt30 = evCpm * 30;
+      const beAt35 = evCpm * 35;
+      const beAt40 = evCpm * 40;
+      const elecCheaper = gasPrice && gasPrice > beAt30; // cheaper than 30mpg car
+      const statusColor = elecCheaper ? 'var(--accent2)' : 'var(--accent3)';
+      const statusText  = elecCheaper
+        ? '✓ Electric is cheaper per mile than most gas cars at current prices'
+        : '⚠ Gas is currently cheaper per mile than charging';
+      bevBeBox.innerHTML =
+        `At <strong style="color:var(--accent)">${miPerKwh.toFixed(2)} mi/kWh</strong> · ` +
+        `<strong style="color:var(--accent)">$${elecCost.toFixed(3)}/kWh</strong> (${annualLvl.name}, ${Math.round(annualEff*100)}% eff) ` +
+        `your cost is <strong style="color:var(--accent)">$${evCpm.toFixed(3)}/mi</strong>.<br>` +
+        `Gas must be ≥ <span style="color:var(--accent2)"><strong>$${beAt25.toFixed(2)}/gal</strong></span> to match a 25 MPG car · ` +
+        `<span style="color:var(--accent2)"><strong>$${beAt30.toFixed(2)}/gal</strong></span> for 30 MPG · ` +
+        `<span style="color:var(--accent2)"><strong>$${beAt35.toFixed(2)}/gal</strong></span> for 35 MPG · ` +
+        `<span style="color:var(--accent2)"><strong>$${beAt40.toFixed(2)}/gal</strong></span> for 40 MPG.<br>` +
+        `<span style="color:${statusColor};font-size:0.68rem;">${statusText}${gasPrice ? ` (gas: $${gasPrice.toFixed(2)}/gal)` : ''}.</span>`;
+    } else {
+      bevBeBox.textContent = 'Enter EV efficiency and electricity cost above to see the breakeven gas price.';
+    }
+
+    // Full charge wall cost at selected annual level
+    const wallKwhForCharge = (battery && annualEff) ? battery / annualEff : null;
+    const fullChargeCost   = (wallKwhForCharge && elecCost) ? wallKwhForCharge * elecCost : null;
+    const evRange          = (battery && miPerKwh) ? battery * miPerKwh : null;
+    const costPer100       = evCpm ? evCpm * 100 : null;
+
+    set('res-charge-cost', fullChargeCost ? '$'+fullChargeCost.toFixed(2) : '—');
+    set('res-gas-equiv',   evRange        ? Math.round(evRange)+' mi'     : '—');
+    set('res-range',       costPer100     ? '$'+costPer100.toFixed(2)      : '—');
+
+    // Cost per mile tile — electric CPM; gas tile shows breakeven gas price at 30 MPG
+    const beGasAt30 = evCpm ? evCpm * 30 : null;
+    set('res-cpm-elec', evCpm     ? '$'+evCpm.toFixed(3)            : '—');
+    set('res-cpm-gas',  beGasAt30 ? '$'+beGasAt30.toFixed(2)+'/gal' : '—');
+    set('res-cpm-save', '—');
+    set('lbl-cpm-gas', 'Breakeven Gas (30 MPG)');
+    set('sub-cpm-gas', 'gas must reach this price');
+
+    const annualElec = evCpm !== null && milesYear ? evCpm * milesYear : null;
+    set('res-annual-elec', annualElec ? '$'+Math.round(annualElec).toLocaleString() : '—');
+    set('res-annual-gas',  '—');
+    set('res-annual-save', '—');
+    set('lbl-annual-gas', 'Annual Gas Cost');
+    set('sub-annual-gas', 'no comparison MPG set');
+
+    // BEV: hide savings tiles (no single MPG to compare against)
+    show('tile-cpm-save',    false);
+    show('tile-annual-save', false);
+
+    updateBreakeven(null, evPremium, milesYear, 'BEV', null);
+    calcCO2({ evCpm, gasCpm: null, milesYear, miPerKwh, gasMpg: null });
+  }
+
+  // ── PHEV slider ─────────────────────────────────────────────
+  function onPhevSlider(el) {
+    const pct = parseInt(el.value);
+    el.style.setProperty('--pct', pct + '%');
+    document.getElementById('phev-ev-pct').textContent  = pct;
+    document.getElementById('phev-gas-pct').textContent = 100 - pct;
+    recalc();
+  }
+
+  let selectedChargeLevel = 'l1';
+  let selectedAnnualLevel = 'l2'; // default to L2 for annual costs
+
+  const ANNUAL_LEVEL_NOTES = {
+    l1: 'Level 1 (120V outlet) — 80% wall-to-battery efficiency',
+    l2: 'Level 2 (240V home charger) — 95% wall-to-battery efficiency',
+    l3: 'Level 3 (DC Fast Charge) — 92% wall-to-battery efficiency',
+  };
+
+  function setAnnualLevel(id) {
+    selectedAnnualLevel = id;
+    ['l1','l2','l3'].forEach(x => {
+      document.getElementById('al-btn-'+x).classList.toggle('active', x === id);
+    });
+    document.getElementById('annual-level-note').textContent = ANNUAL_LEVEL_NOTES[id];
+    recalc();
+  }
+
+  function getAnnualLevelEff() {
+    return levels.find(l => l.id === selectedAnnualLevel).eff;
+  }
+
+  function setChargeLevel(id) {
+    selectedChargeLevel = id;
+    ['l1','l2','l3'].forEach(x => {
+      document.getElementById('cl-btn-'+x).classList.toggle('active', x === id);
+    });
+    // Re-run the table builder with current cached values
+    const batKwh   = parseFloat(document.getElementById(mode === 'phev' ? 'phevBatKwh' : 'batteryKwh').value);
+    const elecCost = parseFloat(document.getElementById('electricityCost').value);
+    buildChargeCostTable(batKwh, elecCost);
+  }
+
+  function buildChargeCostTable(batKwh, elecCost) {
+    const tbody = document.getElementById('charge-rows');
+    tbody.innerHTML = '';
+    if (!batKwh || !elecCost) return;
+
+    levels.forEach(l => {
+      const wallKwh = batKwh / l.eff;
+      const cost    = wallKwh * elecCost;
+      const hrs     = wallKwh / l.kw;
+      let timeStr;
+      if (hrs < 1/60) timeStr = '<1 min';
+      else if (hrs < 1) timeStr = Math.round(hrs * 60) + ' min';
+      else if (hrs >= 24) timeStr = (hrs / 24).toFixed(1) + ' days';
+      else timeStr = hrs.toFixed(1) + ' hrs';
+
+      // Highlight selected row
+      const isSelected = l.id === selectedChargeLevel;
+      const tr = document.createElement('tr');
+      tr.style.cssText = isSelected
+        ? 'background:rgba(0,229,255,0.07);'
+        : '';
+      tr.innerHTML = `
+        <td style="${isSelected ? 'color:var(--accent);' : ''}">${isSelected ? '▶ ' : ''}${l.name}<br>
+          <small style="color:var(--muted);font-size:0.6rem;">${l.sub}</small></td>
+        <td class="val-wall">${wallKwh.toFixed(2)} kWh</td>
+        <td class="val-elec">$${cost.toFixed(2)}</td>
+        <td class="val-time">${timeStr}</td>`;
+      tbody.appendChild(tr);
+
+      // Populate summary tiles for selected level
+      if (isSelected) {
+        document.getElementById('cl-wall-kwh').textContent = wallKwh.toFixed(2) + ' kWh';
+        document.getElementById('cl-cost').textContent     = '$' + cost.toFixed(2);
+        document.getElementById('cl-time').textContent     = timeStr;
+        document.getElementById('cl-level-name').textContent = l.name + ' · ' + Math.round(l.eff * 100) + '% eff';
+      }
+    });
+  }
+
+  // ── PHEV ────────────────────────────────────────────────────
+  function recalcPHEV(gasPrice, milesYear) {
+    const phevBat   = parseFloat(document.getElementById('phevBatKwh').value);
+    const phevMi    = parseFloat(document.getElementById('phevMiKwh').value);
+    const phevHmpg  = parseFloat(document.getElementById('phevHybridMpg').value);
+    const elecCost  = parseFloat(document.getElementById('electricityCost').value);
+    const evPremium = parseFloat(document.getElementById('evPremium').value);
+    const evPct     = parseInt(document.getElementById('phevEvPct').value) / 100;
+    const annualEff = getAnnualLevelEff();
+    const annualLvl = levels.find(l => l.id === selectedAnnualLevel);
+
+    if (phevBat) updateChargeBars(phevBat);
+    buildChargeCostTable(phevBat, elecCost);
+
+    const effectiveElecCost = elecCost ? elecCost / annualEff : null;
+
+    set('lbl-fillup-title','PHEV Charge Cost');
+    set('lbl-cpm-elec','Elec. Mode'); set('sub-cpm-elec','per mile (EV range)');
+    set('lbl-cpm-gas','Gas Mode');    set('sub-cpm-gas', 'per mile (hybrid)');
+    set('lbl-charge-cost', annualLvl.name + ' Charge'); set('sub-charge-cost', Math.round(annualEff*100)+'% eff · wall cost');
+    set('lbl-gas-equiv','Equiv. Gas Fill'); set('sub-gas-equiv','same EV range, gas car');
+    set('lbl-range','Electric Range');
+    set('lbl-annual-elec','Annual Elec.'); set('sub-annual-elec', annualLvl.name + ' · ' + Math.round(annualEff*100)+'% eff');
+
+    const evCpm   = (phevMi && effectiveElecCost) ? effectiveElecCost / phevMi  : null;
+    const gasCpm  = (gasPrice && phevHmpg) ? gasPrice / phevHmpg : null;
+    const compCpm = gasCpm;
+    const saveCpm = evCpm!==null && gasCpm!==null ? gasCpm - evCpm : null;
+
+    set('res-cpm-elec', evCpm   ? '$'+evCpm.toFixed(3)   : '—');
+    set('res-cpm-gas',  gasCpm  ? '$'+gasCpm.toFixed(3)  : '—');
+    set('res-cpm-save', saveCpm ? '$'+saveCpm.toFixed(3) : '—');
+
+    const wallKwhForCharge = (phevBat && annualEff) ? phevBat / annualEff : null;
+    const fullCharge = (wallKwhForCharge && elecCost) ? wallKwhForCharge * elecCost : null;
+    const evRange    = (phevBat && phevMi)  ? phevBat * phevMi  : null;
+    const gasEquiv   = (evRange && gasPrice && phevHmpg) ? (evRange/phevHmpg)*gasPrice : null;
+
+    set('res-charge-cost', fullCharge ? '$'+fullCharge.toFixed(2)  : '—');
+    set('res-gas-equiv',   gasEquiv   ? '$'+gasEquiv.toFixed(2)    : '—');
+    set('res-range',       evRange    ? Math.round(evRange)+' mi'  : '—');
+
+    // PHEV gas price breakeven (using annual level efficiency)
+    const beGasPrice = (elecCost && phevHmpg && phevMi && annualEff)
+      ? (elecCost / annualEff) * phevHmpg / phevMi : null;
+    const phevBeBox = document.getElementById('phev-breakeven-box');
+    if (beGasPrice !== null) {
+      const elecCheaper = gasPrice && gasPrice >= beGasPrice;
+      const equal       = gasPrice && Math.abs(gasPrice - beGasPrice) < 0.01;
+      const statusColor = elecCheaper ? 'var(--accent2)' : 'var(--accent3)';
+      const statusText  = equal       ? '≈ Electric and gas cost the same per mile'
+                        : elecCheaper ? '✓ Charging is cheaper than gas right now'
+                        : '⚠ Gas is cheaper per mile than charging at current prices';
+      phevBeBox.innerHTML =
+        `At <strong style="color:var(--accent)">${phevMi} mi/kWh</strong> · ` +
+        `<strong style="color:var(--accent)">${phevHmpg} MPG</strong> hybrid · ` +
+        `<strong style="color:var(--accent)">$${elecCost.toFixed(3)}/kWh</strong> (${annualLvl.name}, ${Math.round(annualEff*100)}% eff):<br>` +
+        `Gas must be ≥ <strong style="color:var(--accent2)">$${beGasPrice.toFixed(2)}/gal</strong> ` +
+        `for electric to cost the same or less per mile.<br>` +
+        `<span style="color:${statusColor};font-size:0.68rem;">${statusText}${gasPrice ? ` (current gas: $${gasPrice.toFixed(2)}/gal)` : ''}.</span>`;
+    } else {
+      phevBeBox.textContent = 'Enter PHEV specs and electricity cost above to see the breakeven gas price.';
+    }
+
+    const evMiles  = milesYear ? milesYear * evPct       : null;
+    const gasMiles = milesYear ? milesYear * (1 - evPct) : null;
+
+    const annualElec    = evMiles!==null  && evCpm!==null  ? evMiles  * evCpm  : null;
+    const annualGasPhev = gasMiles!==null && gasCpm!==null ? gasMiles * gasCpm : null;
+    const annualTotal   = annualElec!==null && annualGasPhev!==null ? annualElec+annualGasPhev : null;
+    const annualGasOnly = gasCpm!==null && milesYear ? gasCpm*milesYear : null;
+    const annualSave    = annualTotal!==null && annualGasOnly!==null ? annualGasOnly-annualTotal : null;
+
+    set('res-annual-elec', annualElec    ? '$'+Math.round(annualElec).toLocaleString()    : '—');
+    set('res-annual-gas',  annualGasOnly ? '$'+Math.round(annualGasOnly).toLocaleString() : '—');
+    set('res-annual-save', annualSave    ? '$'+Math.round(annualSave).toLocaleString()    : '—');
+
+    show('tile-cpm-save',    true);
+    show('tile-annual-save', true);
+
+    updateBreakeven(annualSave, evPremium, milesYear, 'PHEV', phevHmpg);
+
+    const blendedMiPerKwh = phevMi ? phevMi : null;
+    calcCO2({ evCpm, gasCpm: compCpm, milesYear, miPerKwh: blendedMiPerKwh, gasMpg: phevHmpg, phevEvPct: evPct });
+  }
+
+  // ── Shared breakeven updater ────────────────────────────────
+  function updateBreakeven(annualSave, premium, milesYear, label, gasMpg) {
+    if (annualSave!==null && !isNaN(premium) && premium>=0) {
+      if (annualSave <= 0) {
+        document.getElementById('be-bar').style.width = '0%';
+        set('be-years-label','N/A');
+        document.getElementById('be-note').innerHTML = `⚠ Gas car is cheaper per mile with current inputs. Consider adjusting electricity cost, gas price, or ${label} efficiency.`;
+      } else {
+        const beYrs = premium / annualSave;
+        const pct   = Math.min((1/beYrs)*500, 100);
+        document.getElementById('be-bar').style.width = pct+'%';
+        set('be-years-label', beYrs.toFixed(1)+' years');
+        document.getElementById('be-note').innerHTML =
+          `At <strong>${Math.round(milesYear).toLocaleString()} mi/yr</strong> you save <strong>$${Math.round(annualSave).toLocaleString()}/yr</strong> vs a ${gasMpg}-mpg gas car. ` +
+          `The $${Math.round(premium).toLocaleString()} ${label} premium breaks even in <strong>${beYrs.toFixed(1)} years</strong>. ` +
+          (beYrs<=5 ? '✓ Strong financial case.' : beYrs<=8 ? '~ Moderate payback period.' : '⚠ Long payback — drive more or find a lower premium.');
+      }
+    } else {
+      document.getElementById('be-bar').style.width = '0%';
+      set('be-years-label','—');
+      document.getElementById('be-note').textContent = 'Enter your values above to see the breakeven analysis.';
+    }
+  }
+
+  function set(id, txt) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = txt;
+  }
+
+  // ── Shared offset calculator ─────────────────────────────────
+  // All values are per-year offsets for a given lbs of CO₂
+  function calcOffsetValues(lbs) {
+    // Trees: USDA avg 48 lbs CO₂ absorbed/tree/yr
+    const trees = Math.ceil(lbs / TREE_LBS_PER_YR);
+    // Forest: ~100 trees/acre, each absorbing 48 lbs → 4,800 lbs/acre/yr
+    const acres = (lbs / 4800).toFixed(1);
+    // Solar: 400W panel @ avg 4 peak sun-hrs/day (US avg) = 0.4kW × 4h × 365 = 584 kWh/yr generated.
+    // Using US avg grid intensity 0.852 lbs CO₂/kWh displaced → 584 × 0.852 = 497 lbs offset/panel/yr.
+    // Note: "4 peak sun-hrs/day" is the US average solar irradiance — NOT 24hr sunshine.
+    const solar = Math.ceil(lbs / 497);
+    // Wind: 2MW turbine @ 35% capacity factor = 2000kW × 0.35 × 24h = 16,800 kWh/day displaced.
+    // At 0.852 lbs/kWh → 14,314 lbs CO₂ offset per turbine-day.
+    const windDays = Math.round(lbs / 14314);
+    return {
+      trees: trees.toLocaleString(),
+      acres,
+      solar: solar.toLocaleString(),
+      wind: windDays < 1 ? '<1' : windDays.toLocaleString()
+    };
+  }
+
+  // ── CO2 Impact ──────────────────────────────────────────────
+  // Constants:
+  //   Gas: 8,887 g CO₂ per gallon (EPA) → lbs: 8887/453.592 = 19.6 lbs/gal
+  //   1 tree absorbs ~48 lbs CO₂/year (USDA)
+  //   1 gas car avg: ~4.6 metric tons CO₂/yr = ~10,141 lbs
+  //   1 phone charge: ~8.22 g CO₂ = 0.0181 lbs
+
+  const GAS_LBS_PER_GAL = 19.6;        // lbs CO₂ per gallon burned
+  const TREE_LBS_PER_YR = 48;          // lbs CO₂ absorbed per tree per year
+  const CAR_LBS_PER_YR  = 10141;       // avg gas car annual CO₂ lbs
+  const PHONE_LBS       = 0.0181;      // lbs CO₂ per phone charge
+
+  function getGridGPerKwh() {
+    const sel = document.getElementById('gridRegion');
+    if (sel.value === 'custom') {
+      return parseFloat(document.getElementById('customGridG').value) || 386;
+    }
+    return parseFloat(sel.value);
+  }
+
+  function calcCO2({ evCpm, gasCpm, milesYear, miPerKwh, gasMpg, phevEvPct }) {
+    if (!milesYear) {
+      ['co2-gas-annual','co2-ev-annual','co2-saved-annual','co2-trees','co2-cars-off','co2-phones'].forEach(id => set(id,'—'));
+      set('co2-gas-bar-label','⛽ Gas: — lbs CO₂/mi');
+      set('co2-ev-bar-label', '⚡ EV: — lbs CO₂/mi');
+      document.getElementById('co2-bar-gas').style.width = '100%';
+      document.getElementById('co2-bar-ev').style.width  = '0%';
+      set('co2-note','Enter your vehicle data and miles per year above to see your environmental impact.');
+      return;
+    }
+
+    // Get lbs CO₂ per kWh from grid
+    const gridLbsPerKwh = getGridGPerKwh() / 453.592; // g/kWh → lbs/kWh
+
+    // Gas CO₂ per mile (EPA: 19.6 lbs CO₂ per gallon of gasoline)
+    const gasLbsPerMile = gasMpg ? GAS_LBS_PER_GAL / gasMpg : null;
+
+    // EV CO₂ per mile (grid intensity / efficiency)
+    // For PHEV: blend electric and gas based on drive mix slider
+    let evLbsPerMile = miPerKwh ? gridLbsPerKwh / miPerKwh : null;
+    if (phevEvPct !== undefined && evLbsPerMile !== null && gasLbsPerMile !== null) {
+      // Weighted blend: evPct on electric, rest on gas hybrid
+      evLbsPerMile = (evLbsPerMile * phevEvPct) + (gasLbsPerMile * (1 - phevEvPct));
+    }
+
+    const gasAnnualLbs = gasLbsPerMile ? gasLbsPerMile * milesYear : null;
+    const evAnnualLbs  = evLbsPerMile  ? evLbsPerMile  * milesYear : null;
+    const savedLbs     = (gasAnnualLbs !== null && evAnnualLbs !== null) ? gasAnnualLbs - evAnnualLbs : null;
+
+    const trees    = savedLbs ? savedLbs / TREE_LBS_PER_YR : null;
+    const carsOff  = savedLbs ? savedLbs / CAR_LBS_PER_YR  : null;
+    const phones   = savedLbs ? savedLbs / PHONE_LBS        : null;
+
+    set('co2-gas-annual',   gasAnnualLbs !== null ? Math.round(gasAnnualLbs).toLocaleString() : '—');
+    set('co2-ev-annual',    evAnnualLbs  !== null ? Math.round(evAnnualLbs).toLocaleString()  : '—');
+    set('co2-saved-annual', savedLbs     !== null ? (savedLbs >= 0 ? '+' : '') + Math.round(savedLbs).toLocaleString() : '—');
+    set('co2-trees',   trees   !== null ? (trees >= 0 ? '+' : '') + Math.abs(trees).toFixed(1) : '—');
+    set('co2-cars-off',carsOff !== null ? (carsOff >= 0 ? '+' : '') + Math.abs(carsOff).toFixed(2) : '—');
+    set('co2-phones',  phones  !== null ? (phones >= 0 ? '+' : '') + Math.round(Math.abs(phones)).toLocaleString() : '—');
+
+    // Bar comparison
+    const gasLbl = gasLbsPerMile ? gasLbsPerMile.toFixed(3)+' lbs/mi' : '—';
+    const evLbl  = evLbsPerMile  ? evLbsPerMile.toFixed(3)+' lbs/mi'  : '—';
+    set('co2-gas-bar-label', '⛽ Gas: '+gasLbl);
+    set('co2-ev-bar-label',  '⚡ EV: '+evLbl);
+
+    if (gasLbsPerMile && evLbsPerMile) {
+      const ratio = Math.min(evLbsPerMile / gasLbsPerMile, 1);
+      document.getElementById('co2-bar-gas').style.width = '100%';
+      document.getElementById('co2-bar-ev').style.width  = (ratio * 100).toFixed(1) + '%';
+    }
+
+    // Get display intensity for note
+    const m = document.getElementById('gridMode').value;
+    const abbr = document.getElementById('stateSelect').value;
+    const lbsMwh = m === 'custom'
+      ? Math.round((parseFloat(document.getElementById('customGridG').value)||345) * 1000/453.592)
+      : (abbr ? STATE_GRID[abbr] : 345);
+    const stateName = abbr ? abbr : 'your grid';
+
+    if (savedLbs !== null) {
+      const pctBetter = gasAnnualLbs ? ((savedLbs / gasAnnualLbs) * 100).toFixed(0) : 0;
+      if (savedLbs > 0) {
+        document.getElementById('co2-note').innerHTML =
+          `Driving electric saves <strong>${Math.round(savedLbs).toLocaleString()} lbs of CO₂/yr</strong> — ` +
+          `<strong>${pctBetter}% less</strong> than the gas car. ` +
+          `Equivalent to planting <strong>${Math.abs(trees).toFixed(0)} trees</strong>, ` +
+          `removing <strong>${Math.abs(carsOff).toFixed(2)} gas cars</strong> from the road, ` +
+          `or avoiding <strong>${Math.round(Math.abs(phones)).toLocaleString()} phone charges</strong> of grid energy. ` +
+          `<span style="color:var(--muted);font-size:0.65rem;">Based on ${stateName} grid: ${lbsMwh.toLocaleString()} lbs CO₂/MWh (EPA eGRID 2023).</span>`;
+      } else {
+        document.getElementById('co2-note').innerHTML =
+          `⚠ On this grid (${lbsMwh.toLocaleString()} lbs CO₂/MWh), your EV emits ` +
+          `<span style="color:var(--accent3)">${Math.abs(Math.round(savedLbs)).toLocaleString()} more lbs CO₂/yr</span> than the gas car. ` +
+          `Switching to cleaner electricity (solar panels, green utility plan) dramatically changes this picture.`;
+      }
+    } else {
+      set('co2-note','Enter your vehicle data and miles per year above to see your environmental impact.');
+    }
+
+    // ── EV/PHEV residual grid emissions offset ──
+    const isEvMode = (mode === 'bev' || mode === 'phev');
+    show('ev-offset-section', isEvMode && evAnnualLbs !== null && evAnnualLbs > 0);
+    if (isEvMode && evAnnualLbs !== null && evAnnualLbs > 0) {
+      const o = calcOffsetValues(evAnnualLbs);
+      document.getElementById('ev-offset-trees').textContent = o.trees;
+      document.getElementById('ev-offset-acres').textContent = o.acres;
+      document.getElementById('ev-offset-solar').textContent = o.solar;
+      document.getElementById('ev-offset-wind').textContent  = o.wind;
+      const modeLabel = mode === 'phev' ? 'PHEV (blended mix)' : 'BEV';
+      document.getElementById('ev-offset-note').innerHTML =
+        `Your ${modeLabel} still produces <strong style="color:var(--accent2)">${Math.round(evAnnualLbs).toLocaleString()} lbs of indirect CO₂/yr</strong> ` +
+        `from grid electricity (${lbsMwh.toLocaleString()} lbs/MWh). To offset that you'd need ` +
+        `<strong>${o.trees} trees</strong> growing for a year, ` +
+        `or <strong>${o.solar} solar panels</strong> (400W, ~4 peak sun-hrs/day) on your roof — ` +
+        `which would also power your car essentially for free. ` +
+        `<span style="color:var(--muted);font-size:0.65rem;">Solar figure assumes US avg irradiance, not 24-hr sunshine.</span>`;
+    }
+  } // end calcCO2
+
+  // ── eGRID 2023 State Data (lbs CO₂/MWh) ────────────────────
+  // Source: EPA eGRID 2023 (released Jan 2025). Values are annual average
+  // output emission rates for the electric power sector by state.
+  const STATE_GRID = {
+    AL:590, AK:600, AZ:540, AR:595, CA:349, CO:630, CT:318, DE:515,
+    FL:510, GA:525, HI:580, ID:185, IL:413, IN:660, IA:455, KS:560,
+    KY:680, LA:600, ME:231, MD:445, MA:393, MI:558, MN:468, MS:615,
+    MO:720, MT:640, NE:580, NV:535, NH:296, NJ:310, NM:690, NY:302,
+    NC:478, ND:370, OH:565, OK:620, OR:244, PA:490, RI:356, SC:420,
+    SD:180, TN:545, TX:530, UT:650, VT:6,   VA:440, WA:118, WV:1919,
+    WI:720, WY:1755
+  };
+
+  // Descriptive notes per state for badge
+  const STATE_NOTES = {
+    VT:'Nearly 100% hydro & nuclear — one of the cleanest grids in the US',
+    WA:'Hydro-dominant Pacific Northwest grid',
+    ID:'Majority hydroelectric generation',
+    SD:'Strong wind & hydro mix',
+    OR:'Hydro + growing wind capacity',
+    ME:'Wind-heavy New England state',
+    NH:'Nuclear & hydro base generation',
+    NY:'Nuclear + hydro + offshore wind investment',
+    NJ:'Nuclear-heavy grid, among cleanest in Northeast',
+    CT:'Nuclear base + gas peakers',
+    ND:'Rapidly expanding wind capacity',
+    CA:'Solar + gas mix; aggressive clean energy goals',
+    RI:'Gas + early offshore wind capacity',
+    MA:'Gas + growing offshore wind',
+    IL:'Large nuclear fleet keeps emissions moderate',
+    SC:'Nuclear-heavy, among cleaner Southeast states',
+    VA:'Nuclear + gas; large data center demand',
+    MD:'Gas + nuclear; coal largely retired',
+    IA:'Nation-leading wind generation',
+    MN:'Wind + gas + some nuclear',
+    NC:'Nuclear base + solar growing fast',
+    PA:'Nuclear + gas mix',
+    FL:'Overwhelmingly natural gas',
+    DE:'Primarily natural gas',
+    GA:'Nuclear + gas, new nuclear units coming online',
+    TX:'Gas-heavy but massive wind/solar build-out',
+    NV:'Gas + rapid solar expansion',
+    AZ:'Nuclear + gas mix',
+    TN:'Hydro + nuclear TVA system',
+    MI:'Gas + nuclear fleet',
+    OH:'Gas + remaining coal',
+    KS:'Wind growing, gas backbone',
+    NE:'Wind + nuclear + some coal',
+    AL:'Gas + nuclear mix',
+    AR:'Gas + nuclear',
+    LA:'Heavily natural gas',
+    MS:'Almost entirely natural gas',
+    OK:'Gas + large wind fleet',
+    CO:'Gas + coal transitioning; growing wind/solar',
+    UT:'Coal + gas; some of the highest coal reliance in West',
+    IN:'Coal + gas, coal still dominant',
+    KY:'Coal-heavy Appalachian grid',
+    NM:'Coal + gas, transition underway',
+    MT:'Mix of coal and hydro',
+    AK:'Gas + oil-heavy, isolated grids',
+    HI:'Oil + solar; island grid',
+    MO:'Coal + gas',
+    WI:'Coal + gas mix',
+    WY:'One of the most coal-dependent grids in the US',
+    WV:'Highest carbon intensity in the US — nearly all coal'
+  };
+
+  function getGridIntensityColor(lbs) {
+    // Returns a CSS color based on lbs/MWh
+    if (lbs < 200)  return '#7fff6e';   // green
+    if (lbs < 400)  return '#b8ff6e';   // yellow-green
+    if (lbs < 600)  return '#ffd166';   // yellow
+    if (lbs < 900)  return '#ff9060';   // orange
+    return '#ff4040';                    // red
+  }
+
+  function updateGridBadge(lbsMwh, label) {
+    const el = document.getElementById('grid-badge-val');
+    const dot = document.getElementById('grid-badge-dot');
+    const title = document.getElementById('grid-badge-title');
+    const sub = document.getElementById('grid-badge-sub');
+    const color = getGridIntensityColor(lbsMwh);
+    el.textContent = lbsMwh.toLocaleString();
+    el.style.color = color;
+    dot.style.background = color;
+    dot.style.boxShadow = `0 0 8px ${color}`;
+    title.textContent = label;
+    sub.textContent = 'EPA eGRID 2023 · lbs CO₂ per MWh generated';
+  }
+
+  function onGridModeChange() {
+    const m = document.getElementById('gridMode').value;
+    document.getElementById('state-picker-wrap').style.display = m === 'state' ? '' : 'none';
+    document.getElementById('custom-grid-wrap').style.display  = m === 'custom' ? '' : 'none';
+    if (m === 'custom') {
+      updateGridBadge(parseFloat(document.getElementById('customGridG').value) || 345, 'Custom grid intensity');
+    } else {
+      onStateChange();
+    }
+    recalc();
+  }
+
+  function onStateChange() {
+    const abbr = document.getElementById('stateSelect').value;
+    if (!abbr) {
+      document.getElementById('grid-badge-val').textContent = '—';
+      document.getElementById('grid-badge-title').textContent = 'Select a state above';
+      document.getElementById('grid-badge-dot').style.background = 'var(--muted)';
+      document.getElementById('grid-badge-dot').style.boxShadow = 'none';
+      recalc();
+      return;
+    }
+    const lbs = STATE_GRID[abbr];
+    const note = STATE_NOTES[abbr] || '';
+    updateGridBadge(lbs, note);
+    recalc();
+  }
+
+  function getGridGPerKwh() {
+    const m = document.getElementById('gridMode').value;
+    if (m === 'custom') {
+      // custom input is in g/kWh; convert from lbs/MWh: g/kWh = lbs/MWh * 453.592 / 1000
+      return parseFloat(document.getElementById('customGridG').value) || 345;
+    }
+    const abbr = document.getElementById('stateSelect').value;
+    if (!abbr) return 345; // US avg fallback
+    // STATE_GRID is in lbs/MWh → convert to g/kWh: * 453.592 / 1000
+    return STATE_GRID[abbr] * 453.592 / 1000;
+  }
+
+  // Custom g/kWh input watcher
+  document.getElementById('customGridG').addEventListener('input', () => {
+    const v = parseFloat(document.getElementById('customGridG').value);
+    if (v) updateGridBadge(Math.round(v * 1000 / 453.592), 'Custom grid intensity');
+    recalc();
+  });
+
+  document.querySelectorAll('input[type="number"], select').forEach(el => {
+    el.addEventListener('input', recalc);
+  });
+
+  buildChargeLevels();
+  setMode('bev');
+</script>
+</body>
+</html>
